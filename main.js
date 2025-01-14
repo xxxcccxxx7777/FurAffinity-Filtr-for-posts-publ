@@ -5,6 +5,7 @@
 // @description
 // @author       Mr.None
 // @match        https://www.furaffinity.net/gallery/*
+// @match        https://www.furaffinity.net/favorites/*
 // @grant        none
 // ==/UserScript==
 
@@ -16,7 +17,7 @@
         buttonColor: '#6200EA',
         allowedClasses: ['r-adult t-image'],
         fixedButtons: true,
-        autoFilter: false 
+        autoFilter: false
     };
 
     const saveSettings = () => {
@@ -48,7 +49,7 @@
         let startX, startY, initialX, initialY;
 
         const onMouseDown = (e) => {
-            if (e.button !== 1) return; 
+            if (e.button !== 1) return;
             e.preventDefault();
             isDragging = true;
             startX = e.clientX;
@@ -62,7 +63,7 @@
 
         const onMouseMove = (e) => {
             if (!isDragging) return;
-            e.preventDefault();   
+            e.preventDefault();
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
             element.style.left = `${initialX + dx}px`;
@@ -116,49 +117,60 @@
     };
 
     const filterGallery = () => {
-        const gallery = document.querySelector('#gallery-gallery');
-        if (gallery) {
-            const figures = gallery.querySelectorAll('figure');
-            let hiddenCount = 0;
-            let shownCount = 0;
+        const galleries = ['#gallery-gallery', '#gallery-favorites'];
+        let totalHiddenCount = 0;
+        let totalShownCount = 0;
 
-            figures.forEach(figure => {
-                const figureClass = figure.className;
-                if (settings.allowedClasses.some(allowed => figureClass.includes(allowed))) {
-                    figure.style.display = '';
-                    shownCount++;
-                } else {
-                    figure.style.display = 'none';
-                    hiddenCount++;
-                }
-            });
+        galleries.forEach(selector => {
+            const gallery = document.querySelector(selector);
+            if (gallery) {
+                const figures = gallery.querySelectorAll('figure');
+                let hiddenCount = 0;
+                let shownCount = 0;
 
-            if (settings.showNotifications) {
-                alert(`Hidden: ${hiddenCount}\nShown: ${shownCount}`);
+                figures.forEach(figure => {
+                    const figureClass = figure.className;
+                    if (settings.allowedClasses.some(allowed => figureClass.includes(allowed))) {
+                        figure.style.display = '';
+                        shownCount++;
+                    } else {
+                        figure.style.display = 'none';
+                        hiddenCount++;
+                    }
+                });
+
+                totalHiddenCount += hiddenCount;
+                totalShownCount += shownCount;
             }
-        } else {
-            alert('Element #gallery-gallery not found.');
+        });
+
+        if (settings.showNotifications) {
+            alert(`Hidden: ${totalHiddenCount}\nShown: ${totalShownCount}`);
         }
     };
 
     const openVisibleLinks = () => {
-        const gallery = document.querySelector('#gallery-gallery');
-        if (gallery) {
-            const uniqueUrls = new Set();
-            const visibleLinks = gallery.querySelectorAll('figure:not([style*="display: none"]) a[href]');
-            visibleLinks.forEach(link => {
-                const href = link.getAttribute('href');
-                if (href.startsWith('/view/')) {
-                    const url = `https://www.furaffinity.net${href}`;
-                    if (!uniqueUrls.has(url)) {
-                        uniqueUrls.add(url);
-                        window.open(url, '_blank');
+        const galleries = ['#gallery-gallery', '#gallery-favorites'];
+        const uniqueUrls = new Set();
+
+        galleries.forEach(selector => {
+            const gallery = document.querySelector(selector);
+            if (gallery) {
+                const visibleLinks = gallery.querySelectorAll('figure:not([style*="display: none"]) a[href]');
+                visibleLinks.forEach(link => {
+                    const href = link.getAttribute('href');
+                    if (href.startsWith('/view/')) {
+                        const url = `https://www.furaffinity.net${href}`;
+                        if (!uniqueUrls.has(url)) {
+                            uniqueUrls.add(url);
+                            window.open(url, '_blank');
+                        }
                     }
-                }
-            });
-        } else {
-            console.error('Element #gallery-gallery not found.');
-        }
+                });
+            } else {
+                console.error(`Element ${selector} not found.`);
+            }
+        });
     };
 
     const showSettingsMenu = () => {
@@ -185,9 +197,22 @@
         autoFilterToggle.querySelector('input').addEventListener('change', (e) => {
             settings.autoFilter = e.target.checked;
             saveSettings();
-            if (settings.autoFilter) filterGallery();  
+            if (settings.autoFilter) filterGallery();
         });
         menu.appendChild(autoFilterToggle);
+
+        const notificationsToggle = document.createElement('label');
+        notificationsToggle.style.display = 'block';
+        notificationsToggle.style.marginBottom = '10px';
+        notificationsToggle.innerHTML = `
+            <input type="checkbox" id="notificationsToggle" ${settings.showNotifications ? 'checked' : ''}>
+            Show notifications
+        `;
+        notificationsToggle.querySelector('input').addEventListener('change', (e) => {
+            settings.showNotifications = e.target.checked;
+            saveSettings();
+        });
+        menu.appendChild(notificationsToggle);
 
         const fixedButtonsToggle = document.createElement('label');
         fixedButtonsToggle.style.display = 'block';
@@ -217,7 +242,7 @@
                     settings.allowedClasses = settings.allowedClasses.filter(c => c !== e.target.value);
                 }
                 saveSettings();
-                if (settings.autoFilter) filterGallery(); 
+                if (settings.autoFilter) filterGallery();
             });
             menu.appendChild(classCheckbox);
         });
